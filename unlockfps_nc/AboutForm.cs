@@ -1,12 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace unlockfps_nc
@@ -30,13 +22,25 @@ namespace unlockfps_nc
 
         private void OpenLink(string url)
         {
-            var psi = new ProcessStartInfo
+            if (Uri.IsWellFormedUriString(url, UriKind.Absolute))
             {
-                FileName = url,
-                UseShellExecute = true
-            };
-
-            Process.Start(psi);
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to open link: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Invalid URL format.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
     }

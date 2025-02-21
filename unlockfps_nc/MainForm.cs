@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using unlockfps_nc.Model;
 using unlockfps_nc.Service;
+using unlockfps_nc.Utility;
 
 namespace unlockfps_nc
 {
@@ -34,7 +35,10 @@ namespace unlockfps_nc
         {
             _configService.Save();
             _processService.OnFormClosing();
-            NotifyIconMain.Visible = false;
+            if (!Native.IsWine())
+            {
+                NotifyIconMain.Visible = false;
+            }
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -42,7 +46,9 @@ namespace unlockfps_nc
             _windowLocation = Location;
             _windowSize = Size;
             if (_config.AutoStart)
+            {
                 BtnStartGame_Click(null, null);
+            }
         }
 
         private void SetupBindings()
@@ -60,10 +66,14 @@ namespace unlockfps_nc
         private void BtnStartGame_Click(object sender, EventArgs e)
         {
             if (!File.Exists(_config.GamePath))
+            {
                 ShowSetupForm();
+            }
 
             if (_processService.Start())
+            {
                 WindowState = FormWindowState.Minimized;
+            }
         }
 
         private void ShowSetupForm()
@@ -80,15 +90,19 @@ namespace unlockfps_nc
         private void MainForm_Resize(object sender, EventArgs e)
         {
             if (WindowState == FormWindowState.Minimized)
+            {
                 NotifyAndHide();
+            }
         }
 
         private void NotifyAndHide()
         {
-            NotifyIconMain.Visible = true;
-            NotifyIconMain.Text = $@"FPS Unlocker (FPS: {_config.FPSTarget})";
-            NotifyIconMain.ShowBalloonTip(500);
-
+            if (!Native.IsWine())
+            {
+                NotifyIconMain.Visible = true;
+                NotifyIconMain.Text = $@"FPS Unlocker (FPS: {_config.FPSTarget})";
+                NotifyIconMain.ShowBalloonTip(500);
+            }
             ShowInTaskbar = false;
             Hide();
         }

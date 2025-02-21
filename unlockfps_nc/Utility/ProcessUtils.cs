@@ -21,7 +21,9 @@ namespace unlockfps_nc.Utility
             processHandle = hProcess;
 
             if (hProcess == IntPtr.Zero)
+            {
                 return string.Empty;
+            }
 
             StringBuilder sb = new StringBuilder(1024);
             uint bufferSize = (uint)sb.Capacity;
@@ -54,7 +56,9 @@ namespace unlockfps_nc.Utility
         {
 #if !RELEASEMIN
             if (dllPaths.Count == 0)
+            {
                 return true;
+            }
 
             Native.RtlAdjustPrivilege(20, true, false, out var _);
 
@@ -73,11 +77,15 @@ namespace unlockfps_nc.Utility
                 Marshal.FreeHGlobal(nativeString);
 
                 if (!Native.WriteProcessMemory(processHandle, remoteVa, bytes, bytes.Length, out var bytesWritten))
+                {
                     return false;
+                }
 
                 var thread = Native.CreateRemoteThread(processHandle, IntPtr.Zero, 0, loadLibrary, remoteVa, 0, out var threadId);
                 if (thread == IntPtr.Zero)
+                {
                     return false;
+                }
 
                 Native.WaitForSingleObject(thread, uint.MaxValue);
                 Native.CloseHandle(thread);
@@ -207,10 +215,14 @@ namespace unlockfps_nc.Utility
                     continue;
 
                 if (sb.ToString().ToLowerInvariant() != moduleNameLower)
+                {
                     continue;
+                }
 
                 if (!Native.GetModuleInformation(hProcess, module, out var moduleInfo, (uint)Marshal.SizeOf<MODULEINFO>()))
+                {
                     continue;
+                }
 
                 return moduleInfo.lpBaseOfDll;
             }

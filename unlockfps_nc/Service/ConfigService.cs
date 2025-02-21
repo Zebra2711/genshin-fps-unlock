@@ -23,7 +23,9 @@ namespace unlockfps_nc.Service
         private void Load()
         {
             if (!File.Exists(ConfigName))
+            {
                 return;
+            }
 
             try
             {

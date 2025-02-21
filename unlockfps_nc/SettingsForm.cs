@@ -112,14 +112,16 @@ namespace unlockfps_nc
 
         private bool VerifyDll(string fullPath)
         {
-            if (!File.Exists(fullPath))
+            if (!File.Exists(fullPath)){
                 return false;
+            }
 
             using var fs = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
             using var peReader = new PEReader(fs);
 
-            if (peReader.HasMetadata)
+            if (peReader.HasMetadata){
                 return false;
+            }
 
             return peReader.PEHeaders.CoffHeader.Machine == Machine.Amd64;
         }
@@ -132,8 +134,9 @@ namespace unlockfps_nc
         private void ListBoxDlls_MouseMove(object sender, MouseEventArgs e)
         {
             var index = ListBoxDlls.IndexFromPoint(e.Location);
-            if (index == -1)
+            if (index == -1){
                 return;
+            }
 
             var toolTipText = _config.DllList[index];
             ToolTipSettings.SetToolTip(ListBoxDlls, toolTipText);
@@ -142,8 +145,9 @@ namespace unlockfps_nc
         private void BtnRemoveDll_Click(object sender, EventArgs e)
         {
             var selectedIndex = ListBoxDlls.SelectedIndex;
-            if (selectedIndex == -1)
+            if (selectedIndex == -1){
                 return;
+            }
             
             _config.DllList.RemoveAt(selectedIndex);
             RefreshDllList();

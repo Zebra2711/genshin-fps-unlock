@@ -36,66 +36,71 @@ namespace unlockfps_nc.Service
         private MemoryMappedFile? _sharedMemory = null;
         private MemoryMappedViewAccessor? _sharedMemoryAccessor = null;
         private string _stubPath = string.Empty;
-        private ModuleGuard _stubModule = IntPtr.Zero;
+        private IntPtr _stubModule = IntPtr.Zero;
         private IntPtr _wndHook = IntPtr.Zero;
+        private const int WH_CALLWNDPROC = 3;
 
-        public void Start(int processId, IntPtr pFpsValue)
+        public async Task<void> Start(int processId, IntPtr pFpsValue)
         {
             if (_started)
+            {
                 return;
-
+            }
             _pFpsValue = pFpsValue;
 
-            _sharedMemory = MemoryMappedFile.CreateOrOpen("2DE95FDC-6AB7-4593-BFE6-760DD4AB422B", 4096, MemoryMappedFileAccess.ReadWrite);
-            _sharedMemoryAccessor = _sharedMemory.CreateViewAccessor();
-
-            WriteToSharedMemory(_pFpsValue, 60, IpcStatus.HostAwaiting);
-
-            _stubPath = GetUnlockerStubPath();
-            _stubModule = Native.LoadLibrary(_stubPath);
-            if (_stubModule == IntPtr.Zero)
+            using (_sharedMemory = MemoryMappedFile.CreateOrOpen("2DE95FDC-6AB7-4593-BFE6-760DD4AB422B", 1024, MemoryMappedFileAccess.ReadWrite))
+            using (_sharedMemoryAccessor = _sharedMemory.CreateViewAccessor())
             {
-                string errorMessage = $@"Failed to load stub module: {Marshal.GetLastWin32Error()}{Environment.NewLine}{Marshal.GetLastPInvokeErrorMessage()}";
-                MessageBox.Show(errorMessage, @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
+                WriteToSharedMemory(_pFpsValue, 60, IpcStatus.HostAwaiting);
 
-            var stubWndProc = Native.GetProcAddress(_stubModule, "WndProc");
-            var targetWindow = ProcessUtils.GetWindowFromProcessId(processId);
-            var threadId = Native.GetWindowThreadProcessId(targetWindow, out uint _);
-
-            _wndHook = Native.SetWindowsHookEx(3, stubWndProc, _stubModule, threadId);
-            if (_wndHook == IntPtr.Zero)
-            {
-                string errorMessage = $@"Failed to set window hook: {Marshal.GetLastWin32Error()}{Environment.NewLine}{Marshal.GetLastPInvokeErrorMessage()}";
-                MessageBox.Show(errorMessage, @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            if (!Native.PostThreadMessage(threadId, 0, IntPtr.Zero, IntPtr.Zero))
-            {
-                string errorMessage = $@"Failed to post thread message: {Marshal.GetLastWin32Error()}{Environment.NewLine}{Marshal.GetLastPInvokeErrorMessage()}";
-                MessageBox.Show(errorMessage, @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            int retryCount = 0;
-            while (true)
-            {
-                IpcData ipcData = new IpcData();
-                _sharedMemoryAccessor.Read(0, out ipcData);
-
-                if (ipcData.Status == IpcStatus.ClientReady)
-                    break;
-
-                if (retryCount >= 10)
+                _stubPath = GetUnlockerStubPath();
+                _stubModule = Native.LoadLibrary(_stubPath);
+                if (_stubModule == IntPtr.Zero)
                 {
-                    MessageBox.Show(@"Failed to start the unlocker.", @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    string errorMessage = $@"Failed to load stub module: {Marshal.GetLastWin32Error()}{Environment.NewLine}{Marshal.GetLastPInvokeErrorMessage()}";
+                    MessageBox.Show(errorMessage, @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
-                retryCount++;
-                Task.Delay(1000).Wait();
+                var stubWndProc = Native.GetProcAddress(_stubModule, "WndProc");
+                var targetWindow = ProcessUtils.GetWindowFromProcessId(processId);
+                var threadId = Native.GetWindowThreadProcessId(targetWindow, out uint _);
+
+                _wndHook = Native.SetWindowsHookEx(WH_CALLWNDPROC, stubWndProc, _stubModule, threadId);
+                if (_wndHook == IntPtr.Zero)
+                {
+                    string errorMessage = $@"Failed to set window hook: {Marshal.GetLastWin32Error()}{Environment.NewLine}{Marshal.GetLastPInvokeErrorMessage()}";
+                    MessageBox.Show(errorMessage, @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (!Native.PostThreadMessage(threadId, 0, IntPtr.Zero, IntPtr.Zero))
+                {
+                    string errorMessage = $@"Failed to post thread message: {Marshal.GetLastWin32Error()}{Environment.NewLine}{Marshal.GetLastPInvokeErrorMessage()}";
+                    MessageBox.Show(errorMessage, @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                int retryCount = 0;
+                while (true)
+                {
+                    IpcData ipcData = new IpcData();
+                    _sharedMemoryAccessor.Read(0, out ipcData);
+
+                    if (ipcData.Status == IpcStatus.ClientReady)
+                    {
+                        break;
+                    }
+
+                    if (retryCount >= 5)
+                    {
+                        MessageBox.Show(@"Failed to start the unlocker.", @"Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    retryCount++;
+                    await Task.Delay(500);
+                }
             }
 
             _started = true;
@@ -104,7 +109,9 @@ namespace unlockfps_nc.Service
         public void ApplyFpsLimit(int fps)
         {
             if (_pFpsValue == IntPtr.Zero)
+            {
                 return;
+            }
 
             WriteToSharedMemory(_pFpsValue, fps, IpcStatus.None);
         }
@@ -149,6 +156,16 @@ namespace unlockfps_nc.Service
             Stop();
             _sharedMemoryAccessor?.Dispose();
             _sharedMemory?.Dispose();
+            if (_stubModule != IntPtr.Zero)
+            {
+                Native.FreeLibrary(_stubModule);
+                _stubModule = IntPtr.Zero;
+            }
+            if (_wndHook != IntPtr.Zero)
+            {
+                Native.UnhookWindowsHookEx(_wndHook);
+                _wndHook = IntPtr.Zero;
+            }
         }
     }
 }

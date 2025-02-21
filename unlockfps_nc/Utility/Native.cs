@@ -276,10 +276,45 @@ namespace unlockfps_nc.Utility
         public uint Signature;
         public IMAGE_FILE_HEADER FileHeader;
         public IMAGE_OPTIONAL_HEADER64 OptionalHeader;
+
+        // Implement IEquatable<T> interface
+        public bool Equals(IMAGE_NT_HEADERS other)
+        {
+            return Signature == other.Signature &&
+                FileHeader.Equals(other.FileHeader) &&
+                OptionalHeader.Equals(other.OptionalHeader);
+        }
+
+        // Override Object.Equals
+        public override bool Equals(object obj)
+        {
+            return obj is IMAGE_NT_HEADERS headers && Equals(headers);
+        }
+        // Override GetHashCode
+        public override int GetHashCode()
+        {
+            unchecked // Allow arithmetic overflow
+            {
+                int hashCode = 17;
+                hashCode = (hashCode * 23) + Signature.GetHashCode();
+                hashCode = (hashCode * 23) + FileHeader.GetHashCode();
+                hashCode = (hashCode * 23) + OptionalHeader.GetHashCode();
+                return hashCode;
+            }
+        }
+        // Define equality operators for consistency
+        public static bool operator ==(IMAGE_NT_HEADERS left, IMAGE_NT_HEADERS right)
+        {
+            return left.Equals(right);
+        }
+        public static bool operator !=(IMAGE_NT_HEADERS left, IMAGE_NT_HEADERS right)
+        {
+            return !(left == right);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct IMAGE_FILE_HEADER
+    public struct IMAGE_FILE_HEADER : IEquatable<IMAGE_FILE_HEADER>
     {
         public ushort Machine;
         public ushort NumberOfSections;
@@ -288,6 +323,52 @@ namespace unlockfps_nc.Utility
         public uint NumberOfSymbols;
         public ushort SizeOfOptionalHeader;
         public ushort Characteristics;
+
+        // Implement IEquatable<T> interface
+        public bool Equals(IMAGE_FILE_HEADER other)
+        {
+            return Machine == other.Machine &&
+                NumberOfSections == other.NumberOfSections &&
+                TimeDateStamp == other.TimeDateStamp &&
+                PointerToSymbolTable == other.PointerToSymbolTable &&
+                NumberOfSymbols == other.NumberOfSymbols &&
+                SizeOfOptionalHeader == other.SizeOfOptionalHeader &&
+                Characteristics == other.Characteristics;
+        }
+
+        // Override Object.Equals
+        public override bool Equals(object obj)
+        {
+            return obj is IMAGE_FILE_HEADER header && Equals(header);
+        }
+
+        // Override GetHashCode
+        public override int GetHashCode()
+        {
+            unchecked // Allow arithmetic overflow
+            {
+                int hashCode = 17;
+                hashCode = (hashCode * 23) + Machine.GetHashCode();
+                hashCode = (hashCode * 23) + NumberOfSections.GetHashCode();
+                hashCode = (hashCode * 23) + TimeDateStamp.GetHashCode();
+                hashCode = (hashCode * 23) + PointerToSymbolTable.GetHashCode();
+                hashCode = (hashCode * 23) + NumberOfSymbols.GetHashCode();
+                hashCode = (hashCode * 23) + SizeOfOptionalHeader.GetHashCode();
+                hashCode = (hashCode * 23) + Characteristics.GetHashCode();
+                return hashCode;
+            }
+        }
+
+        // Define equality operators for consistency
+        public static bool operator ==(IMAGE_FILE_HEADER left, IMAGE_FILE_HEADER right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(IMAGE_FILE_HEADER left, IMAGE_FILE_HEADER right)
+        {
+            return !(left == right);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
